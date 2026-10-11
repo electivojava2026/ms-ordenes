@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1-create-ordenes-table
+      author: ms-ordenes
+      changes:
+        - createTable:
+            tableName: ordenes
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: comprador_email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: evento_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tipo_entrada_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cantidad
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: estado
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: motivo
+                  type: VARCHAR(255)
+              - column:
+                  name: fecha_creacion
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 2-seed-ordenes
+      author: ms-ordenes
+      changes:
+        - insert:
+            tableName: ordenes
+            columns:
+              - column: { name: comprador_email,  value: "admin@eventpass.com" }
+              - column: { name: evento_id,         valueNumeric: 1 }
+              - column: { name: tipo_entrada_id,   valueNumeric: 1 }
+              - column: { name: cantidad,          valueNumeric: 2 }
+              - column: { name: estado,            value: "EMITIDA" }
+              - column: { name: fecha_creacion,    valueDate: "2025-01-10T10:00:00" }
+        - insert:
+            tableName: ordenes
+            columns:
+              - column: { name: comprador_email,  value: "staff@eventpass.com" }
+              - column: { name: evento_id,         valueNumeric: 1 }
+              - column: { name: tipo_entrada_id,   valueNumeric: 2 }
+              - column: { name: cantidad,          valueNumeric: 1 }
+              - column: { name: estado,            value: "EMITIDA" }
+              - column: { name: fecha_creacion,    valueDate: "2025-01-10T11:00:00" }
+        - insert:
+            tableName: ordenes
+            columns:
+              - column: { name: comprador_email,  value: "user@eventpass.com" }
+              - column: { name: evento_id,         valueNumeric: 2 }
+              - column: { name: tipo_entrada_id,   valueNumeric: 3 }
+              - column: { name: cantidad,          valueNumeric: 1 }
+              - column: { name: estado,            value: "PENDIENTE_EMISION" }
+              - column: { name: fecha_creacion,    valueDate: "2025-03-01T09:30:00" }
