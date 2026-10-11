@@ -11,11 +11,13 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.eventpass.ms_ordenes.dto.CambioEstadoRequest;
+import com.eventpass.ms_ordenes.dto.CompraResponse;
 import com.eventpass.ms_ordenes.dto.OrdenRequest;
 import com.eventpass.ms_ordenes.dto.OrdenResponse;
 import com.eventpass.ms_ordenes.model.EstadoOrden;
@@ -36,8 +38,15 @@ public class OrdenController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ordenService.crear(auth.getName(), request));
     }
 
+    // Compra simulada: crea la orden y emite los tickets en el momento llamando a ms-tickets
+    @PostMapping("/comprar")
+    public ResponseEntity<CompraResponse> comprar(Authentication auth, @RequestBody OrdenRequest request,
+            @RequestHeader("Authorization") String authorization) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ordenService.comprar(auth.getName(), request, authorization));
+    }
+
     @GetMapping("/mis-ordenes")
-    public ResponseEntity<List<OrdenResponse>> misOrdenes(Authentication auth) {
+    public ResponseEntity<List<CompraResponse>> misOrdenes(Authentication auth) {
         return ResponseEntity.ok(ordenService.misOrdenes(auth.getName()));
     }
 

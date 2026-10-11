@@ -11,9 +11,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.eventpass.ms_ordenes.client.TicketClient;
 import com.eventpass.ms_ordenes.security.JwtService;
 
 /** Verifica que cada rol (USER / STAFF) acceda solo a los endpoints que le corresponden. */
@@ -29,6 +31,10 @@ class OrdenSeguridadTest {
 
     @Autowired
     private JwtService jwtService;
+
+    // mis-ordenes consulta ms-tickets; aqui no hay ms-tickets corriendo
+    @MockitoBean
+    private TicketClient ticketClient;
 
     private String bearer(String role) {
         return "Bearer " + jwtService.generateToken(role.toLowerCase() + "@eventpass.com", role);

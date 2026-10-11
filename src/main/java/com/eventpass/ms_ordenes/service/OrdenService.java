@@ -1,15 +1,22 @@
 package com.eventpass.ms_ordenes.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
+import com.eventpass.ms_ordenes.client.EventoClient;
+import com.eventpass.ms_ordenes.client.TicketClient;
 import com.eventpass.ms_ordenes.dto.CambioEstadoRequest;
+import com.eventpass.ms_ordenes.dto.CompraResponse;
 import com.eventpass.ms_ordenes.dto.OrdenRequest;
 import com.eventpass.ms_ordenes.dto.OrdenResponse;
+import com.eventpass.ms_ordenes.dto.TicketResponse;
 import com.eventpass.ms_ordenes.exception.EstadoInvalidoException;
 import com.eventpass.ms_ordenes.exception.RecursoNoEncontradoException;
 import com.eventpass.ms_ordenes.exception.SolicitudInvalidaException;
@@ -27,6 +34,10 @@ public class OrdenService {
 
     @Autowired
     private OrdenPublisher ordenPublisher;
+
+    @Autowired
+    private TicketClient ticketClient;
+
     @Autowired
     private EventoClient eventoClient;
 
@@ -73,10 +84,12 @@ public class OrdenService {
         return new CompraResponse(orden, tickets);
     }
 
+    // Comprador: sus propias ordenes, cada una con sus tickets (consultados a ms-tickets)
     @Transactional(readOnly = true)
-    public List<OrdenResponse> misOrdenes(String compradorEmail) {
-        return ordenRepository.findByCompradorEmailOrderByFechaCreacionDesc(compradorEmail)
-                .stream().map(this::aRespuesta).toList();
+    public List<CompraResponse> misOrdenes(String compradorEmail) {
+        return ordenRepository.findByCompradorEmailOrderByFechaCreacionDesc(compradorEmail).stream()
+                .map(o -> new CompraResponse(aRespuesta(o), ticketClient.listarPorOrden(o.getId())))
+                .toList();
     }
 
     // Staff: todas las ordenes, con filtro opcional por estado

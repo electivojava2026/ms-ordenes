@@ -4,17 +4,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.eventpass.ms_ordenes.client.EventoClient;
+import com.eventpass.ms_ordenes.client.TicketClient;
 import com.eventpass.ms_ordenes.dto.CambioEstadoRequest;
+import com.eventpass.ms_ordenes.dto.CompraResponse;
 import com.eventpass.ms_ordenes.dto.OrdenRequest;
 import com.eventpass.ms_ordenes.dto.OrdenResponse;
+import com.eventpass.ms_ordenes.dto.TicketResponse;
 import com.eventpass.ms_ordenes.exception.EstadoInvalidoException;
 import com.eventpass.ms_ordenes.exception.RecursoNoEncontradoException;
 import com.eventpass.ms_ordenes.exception.SolicitudInvalidaException;
@@ -29,6 +44,12 @@ class OrdenServiceTest {
 
     @Autowired
     private OrdenService ordenService;
+
+    @MockitoBean
+    private TicketClient ticketClient;
+
+    @MockitoBean
+    private EventoClient eventoClient;
 
     private OrdenResponse crearEjemplo(String email) {
         return ordenService.crear(email, new OrdenRequest(1L, 1L, 2));
@@ -60,9 +81,13 @@ class OrdenServiceTest {
         OrdenResponse propia = crearEjemplo(COMPRADOR);
         OrdenResponse ajena = crearEjemplo("otro@eventpass.com");
 
-        List<OrdenResponse> mias = ordenService.misOrdenes(COMPRADOR);
+        when(ticketClient.listarPorOrden(propia.id()))
+                .thenReturn(List.of(new TicketResponse(1L, "TKT-TEST0001", 1L, propia.id(), "GENERADO", null)));
+
+        List<CompraResponse> mias = ordenService.misOrdenes(COMPRADOR);
         assertEquals(1, mias.size());
-        assertEquals(propia.id(), mias.get(0).id());
+        assertEquals(propia.id(), mias.get(0).orden().id());
+        assertEquals("TKT-TEST0001", mias.get(0).tickets().get(0).ticketNumber());
 
         assertThrows(RecursoNoEncontradoException.class,
                 () -> ordenService.obtener(ajena.id(), COMPRADOR, false));
@@ -114,5 +139,41 @@ class OrdenServiceTest {
                         new CambioEstadoRequest(EstadoOrden.PENDIENTE_EMISION, null)));
         assertThrows(RecursoNoEncontradoException.class,
                 () -> ordenService.actualizarEstado(9999L, new CambioEstadoRequest(EstadoOrden.EMITIDA, null)));
+    }
+
+    @Test
+    void comprarEmiteUnTicketPorUnidad() {
+        when(ticketClient.generar(anyLong(), anyLong(), any()))
+                .thenReturn(new TicketResponse(1L, "TKT-TEST0001", 1L, 1L, "GENERADO", null));
+
+        CompraResponse compra = ordenService.comprar(COMPRADOR, new OrdenRequest(1L, 1L, 2), "Bearer x");
+
+        assertEquals(EstadoOrden.EMITIDA, compra.orden().estado());
+        assertEquals(2, compra.tickets().size());
+        verify(eventoClient).reservar(1L, 1L, 2);
+    }
+
+    @Test
+    void comprarQuedaRechazadaSinAforoYNoEmiteTickets() {
+        doThrow(HttpClientErrorException.create(HttpStatus.CONFLICT, "Conflict", null, null, null))
+                .when(eventoClient).reservar(anyLong(), anyLong(), anyInt());
+
+        CompraResponse compra = ordenService.comprar(COMPRADOR, new OrdenRequest(1L, 1L, 1), "Bearer x");
+
+        assertEquals(EstadoOrden.RECHAZADA, compra.orden().estado());
+        assertEquals("Sin aforo", compra.orden().motivo());
+        assertEquals(0, compra.tickets().size());
+        verify(ticketClient, never()).generar(anyLong(), anyLong(), any());
+    }
+
+    @Test
+    void comprarQuedaRechazadaSiFallaMsTickets() {
+        when(ticketClient.generar(anyLong(), anyLong(), any()))
+                .thenThrow(new ResourceAccessException("Connection refused"));
+
+        CompraResponse compra = ordenService.comprar(COMPRADOR, new OrdenRequest(1L, 1L, 1), "Bearer x");
+
+        assertEquals(EstadoOrden.RECHAZADA, compra.orden().estado());
+        assertNotNull(compra.orden().motivo());
     }
 }

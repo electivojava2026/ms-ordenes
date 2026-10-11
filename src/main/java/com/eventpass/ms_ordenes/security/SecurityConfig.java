@@ -37,6 +37,7 @@ public class SecurityConfig {
                     .requestMatchers("/error").permitAll()
                         // Comprador: crea sus compras y consulta las suyas
                         .requestMatchers(HttpMethod.POST, "/api/v1/ordenes").hasRole("USER")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/ordenes/comprar").hasRole("USER")
                         .requestMatchers(HttpMethod.GET, "/api/v1/ordenes/mis-ordenes").hasRole("USER")
                         // Una orden por id: USER (solo la suya, lo valida el service) o STAFF
                         .requestMatchers(HttpMethod.GET, "/api/v1/ordenes/{id}").hasAnyRole("USER", "STAFF")
@@ -52,7 +53,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
