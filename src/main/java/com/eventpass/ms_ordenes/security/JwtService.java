@@ -42,7 +42,7 @@ public class JwtService {
         return extractAllClaims(token).get("role", String.class);
     }
 
-    // Solo para las pruebas: emula el token que entregaria ms-auth
+    // Token de la cuenta de servicio (EventoClient) y, en las pruebas, emula el token de ms-auth
     public String generateToken(String email, String role) {
         return Jwts.builder()
                 .subject(email)
@@ -51,6 +51,11 @@ public class JwtService {
                 .expiration(new Date(System.currentTimeMillis() + 3_600_000))
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    // Token de la cuenta de servicio de ms-ordenes para llamar a ms-eventos / ms-tickets
+    public String generateServiceToken() {
+        return generateToken("ms-ordenes@eventpass.internal", "SERVICE");
     }
 
     private Claims extractAllClaims(String token) {

@@ -27,6 +27,8 @@ public class OrdenService {
 
     @Autowired
     private OrdenPublisher ordenPublisher;
+    @Autowired
+    private EventoClient eventoClient;
 
     /**
      * Registra la compra de inmediato como PENDIENTE_EMISION. No consulta ni descuenta el aforo:
@@ -49,7 +51,28 @@ public class OrdenService {
         return aRespuesta(guardada);
     }
 
-    // Comprador: sus propias ordenes
+    /**
+     * Compra simulada sincrona: crea la orden, descuenta el aforo en ms-eventos y pide a ms-tickets
+     * un ticket por unidad. Si no hay aforo o algun servicio falla, la orden queda RECHAZADA con el motivo.
+     */
+    public CompraResponse comprar(String compradorEmail, OrdenRequest request, String authorization) {
+        OrdenResponse orden = crear(compradorEmail, request);
+        List<TicketResponse> tickets = new ArrayList<>();
+        try {
+            eventoClient.reservar(orden.eventoId(), orden.tipoEntradaId(), orden.cantidad());
+            for (int i = 0; i < orden.cantidad(); i++) {
+                tickets.add(ticketClient.generar(orden.eventoId(), orden.id(), authorization));
+            }
+            orden = actualizarEstado(orden.id(), new CambioEstadoRequest(EstadoOrden.EMITIDA, null));
+        } catch (HttpClientErrorException.Conflict e) {
+            orden = actualizarEstado(orden.id(), new CambioEstadoRequest(EstadoOrden.RECHAZADA, "Sin aforo"));
+        } catch (RestClientException e) {
+            orden = actualizarEstado(orden.id(), new CambioEstadoRequest(EstadoOrden.RECHAZADA,
+                    "No se pudo emitir el ticket: " + e.getMessage()));
+        }
+        return new CompraResponse(orden, tickets);
+    }
+
     @Transactional(readOnly = true)
     public List<OrdenResponse> misOrdenes(String compradorEmail) {
         return ordenRepository.findByCompradorEmailOrderByFechaCreacionDesc(compradorEmail)
