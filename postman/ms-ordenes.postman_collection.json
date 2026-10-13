@@ -164,6 +164,111 @@
       ]
     },
     {
+      "name": "1b. Comprar entradas como USER (201, EMITIDA con tickets)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/ordenes/comprar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "ordenes",
+            "comprar"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{tokenUser}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventoId\": 1,\n  \"tipoEntradaId\": 1,\n  \"cantidad\": 2\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "const r = pm.response.json();",
+              "pm.test('Orden EMITIDA', () => pm.expect(r.orden.estado).to.eql('EMITIDA'));",
+              "pm.test('Trae 2 tickets', () => pm.expect(r.tickets.length).to.eql(2));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "1c. Comprar mas del aforo (201, orden RECHAZADA sin aforo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/ordenes/comprar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "ordenes",
+            "comprar"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{tokenUser}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventoId\": 1,\n  \"tipoEntradaId\": 1,\n  \"cantidad\": 99999\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "const r = pm.response.json();",
+              "pm.test('Orden RECHAZADA', () => pm.expect(r.orden.estado).to.eql('RECHAZADA'));",
+              "pm.test('Motivo: Sin aforo', () => pm.expect(r.orden.motivo).to.eql('Sin aforo'));",
+              "pm.test('Sin tickets', () => pm.expect(r.tickets.length).to.eql(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "2. Mis ordenes como USER (200)",
       "request": {
         "method": "GET",
